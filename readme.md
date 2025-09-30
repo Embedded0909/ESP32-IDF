@@ -19,6 +19,8 @@ https://www.circuitstate.com/pinouts/doit-esp32-devkit-v1-wifi-development-board
 ## CHƯƠNG 01 TẠO VÀ BUILD PROJECT
 Module kit v1
 ![alt text](image.png)
+Chức năng của các chân
+![alt text](image-6.png)
 
 Schematic
 ![alt text](image-1.png)
@@ -35,6 +37,7 @@ Các lệnh build và nạp
 ```cpp
 - idf.py build               : build dự án
 - idf.py -p COMx flash       : Nạp vào chip
+- idf.py -p COMx monitor     : Mở monitor nhìn printf
 ```
 
 Chương trình đầu tiên
@@ -131,7 +134,7 @@ gpio_config(&io_conf);      : Set config GPIO
 #### 2.3.2 Led 7 đoạn
 ![alt text](image-4.png)
 ```cpp
-| Ký tự | a b c d e f g dp | Logical (bin) | Logical (hex) | Common-anode port (hex, active low) |
+| Ký tự | a b c d e f g dp | Logical (bin) | Logical (hex) | Common-anode port                   |
 | ----: | :--------------: | :-----------: | :-----------: | :---------------------------------: |
 |     0 |  1 1 1 1 1 1 0 0 |  `0b00111111` |     `0x3F`    |            `~0x3F = 0xC0`           |
 |     1 |  0 1 1 0 0 0 0 0 |  `0b00000110` |     `0x06`    |                `0xF9`               |
@@ -152,7 +155,73 @@ gpio_config(&io_conf);      : Set config GPIO
 ```
 
 ## CHƯƠNG 03 ADC
+### 3.1 Lý thuyết
+![alt text](image-5.png)
+Gồm 2 bộ ADC độc lập (ADC1 và ADC2)
+```
+ADC1: 8 chanels
+ADC2: 10 chanels
+```
+Độ phân giải ADC
+```
+Tối đa 12-bit (0–4095)
+```
+### 3.2 Thực chiến ADC
+Sử dụng ADC1 CHANEL 0
+Các bước làm
+```cpp
+    BƯỚC 1: Tạo handle cho ADC1 (Init)
+    --------------------------------------------------------
+    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = ADC_UNIT_1,
+    };
+    adc_oneshot_new_unit(&init_config, &adc1_handle);
 
+    BƯỚC 2: Cấu hình chanel ADC1 - CH0
+    --------------------------------------------------------
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT,   // Default là 12 bits
+        .atten = ADC_ATTEN_DB_12,           // 12db cho phép đọc tới ~3.3V
+    };
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
+    
+    BƯỚC 3: Đọc ADC (Hiệu chuẩn bằng Calibration nếu cần)
+    ---------------------------------------------------------
+    adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &value);
+    printf("ADC1_CH0 (GPIO36) value: %d\n", value);
+```
+Example
+```cpp
+#include <stdio.h>
+#include "esp_adc/adc_oneshot.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+void app_main(void)
+{
+
+    adc_oneshot_unit_handle_t adc1_handle;
+    adc_oneshot_unit_init_cfg_t init_config = {
+        .unit_id = ADC_UNIT_1,
+    };
+    adc_oneshot_new_unit(&init_config, &adc1_handle);
+
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_DEFAULT, 
+        .atten = ADC_ATTEN_DB_12,         
+    };
+    adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
+
+    int value;
+    while (1)
+    {
+        adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &value);
+        printf("ADC1_CH0 (GPIO36) value: %d\n", value);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+```
 ## CHƯƠNG 04 TIMER - PWM
 
 ## CHƯƠNG 05 UART
