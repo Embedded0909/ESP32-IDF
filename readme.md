@@ -1,0 +1,169 @@
+## TÀI LIỆU THAM KHẢO
+----------------------------------------
+Reference: 
+https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf
+Module: 
+https://www.circuitstate.com/pinouts/doit-esp32-devkit-v1-wifi-development-board-pinout-diagram-and-reference/
+
+----------------------------------------
+
+## CHƯƠNG 00 HƯỚNG DẪN CÁCH HỌC
+Đối với mọi con vi điều khiển mà các bạn muốn học
+```cpp
+- Đọc tài liệu nhà sản xuất (Biết thông tin cơ bản như SRAM, FLASH,..)
+- Đọc example về ngoại vi nếu có (Cái này thì ESP32 làm rất tốt)
+- Đọc reference của ngoại vi cần thiết
+- Thực hành ngoại vi đó với các module IC(sensor) mình có sẵn
+```
+
+## CHƯƠNG 01 TẠO VÀ BUILD PROJECT
+Module kit v1
+![alt text](image.png)
+
+Schematic
+![alt text](image-1.png)
+
+Các lệnh khởi tạo project
+```cpp
+- B1 vào shell/cmd idf
+- B2 cd tới ổ chứa project
+- B3 idf.py create-project NAME
+- B4 cd vào NAME
+- B5 idf.py set-target esp32
+```
+Các lệnh build và nạp
+```cpp
+- idf.py build               : build dự án
+- idf.py -p COMx flash       : Nạp vào chip
+```
+
+Chương trình đầu tiên
+```cpp
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/gpio.h"
+
+void app_main(void)
+{
+    gpio_set_direction(2, GPIO_MODE_OUTPUT);
+
+    while (1)
+    {
+        gpio_set_level(2, 1);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        gpio_set_level(2, 0);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
+```
+
+## CHƯƠNG 02 GPIO
+
+### 2.1 Lý Thuyết
+
+GPIO là General Purpose Input/Output
+```
+Là các chân tín hiệu trên vi điều khiển (MCU) có thể lập trình để làm ngõ vào (input) hoặc ngõ ra (output)
+```
+Cơ chế cơ bản của GPIO
+```
+Input:
+Đọc tín hiệu từ bên ngoài (nút nhấn, sensor, tín hiệu logic).
+Có thể bật pull-up hoặc pull-down nội bộ để định mức logic khi không có kết nối.
+
+Output:
+Xuất tín hiệu logic để điều khiển
+Push-pull: xuất được cả mức HIGH và LOW.
+Open-drain: chỉ kéo xuống LOW, mức HIGH cần điện trở kéo ngoài.
+
+Alternate Function (chức năng thay thế):
+GPIO có chức năng như: UART, SPI, I²C, PWM, ADC,…
+```
+
+Pull up và Pull down
+![alt text](image-2.png)
+
+Open drain và Push pull
+```
+Open drain: Có thể ở trạng thái: floating và 0
+Push pull: Có thể ở trạng thái: 1 và 0
+```
+
+Cách config GPIO
+#### Cách 01 - Tiện với config từng chân
+Sử dụng 
+```cpp
+gpio_set_direction(number, mode);
+```
+#### Cách 02 - Có thể config nhiều chân cùng lúc
+```cpp
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,         // Disable interrupt
+        .mode = GPIO_MODE_INPUT,                // Input
+        .pin_bit_mask = (1ULL << GPIO_NUM_4),   // GPIO4
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,  // No pull-down
+        .pull_up_en = GPIO_PULLUP_ENABLE,       // pull-up
+    };
+    gpio_config(&io_conf);
+```
+Trong đó
+```cpp
+typedef struct {
+    uint64_t pin_bit_mask;          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+    gpio_mode_t mode;               /*!< GPIO mode: set input/output mode                     */
+    gpio_pullup_t pull_up_en;       /*!< GPIO pull-up                                         */
+    gpio_pulldown_t pull_down_en;   /*!< GPIO pull-down                                       */
+    gpio_int_type_t intr_type;      /*!< GPIO interrupt type                                  */
+} gpio_config_t;
+```
+### 2.2 Các function cần chú ý
+```cpp
+gpio_get_level(num);        : Get ra mức của GPIO
+gpio_set_level(num, state)  : Set trạng thái của GPIO
+gpio_config(&io_conf);      : Set config GPIO
+```
+### 2.3 Thực hành với led 7 đoạn và IR Sensor
+#### 2.3.1 IR Sensor
+![alt text](image-3.png)
+
+#### 2.3.2 Led 7 đoạn
+![alt text](image-4.png)
+```cpp
+| Ký tự | a b c d e f g dp | Logical (bin) | Logical (hex) | Common-anode port (hex, active low) |
+| ----: | :--------------: | :-----------: | :-----------: | :---------------------------------: |
+|     0 |  1 1 1 1 1 1 0 0 |  `0b00111111` |     `0x3F`    |            `~0x3F = 0xC0`           |
+|     1 |  0 1 1 0 0 0 0 0 |  `0b00000110` |     `0x06`    |                `0xF9`               |
+|     2 |  1 1 0 1 1 0 1 0 |  `0b01011011` |     `0x5B`    |                `0xA4`               |
+|     3 |  1 1 1 1 0 0 1 0 |  `0b01001111` |     `0x4F`    |                `0xB0`               |
+|     4 |  0 1 1 0 0 1 1 0 |  `0b01100110` |     `0x66`    |                `0x99`               |
+|     5 |  1 0 1 1 0 1 1 0 |  `0b01101101` |     `0x6D`    |                `0x92`               |
+|     6 |  1 0 1 1 1 1 1 0 |  `0b01111101` |     `0x7D`    |                `0x82`               |
+|     7 |  1 1 1 0 0 0 0 0 |  `0b00000111` |     `0x07`    |                `0xF8`               |
+|     8 |  1 1 1 1 1 1 1 0 |  `0b01111111` |     `0x7F`    |                `0x80`               |
+|     9 |  1 1 1 1 0 1 1 0 |  `0b01101111` |     `0x6F`    |                `0x90`               |
+|     A |  1 1 1 0 1 1 1 0 |  `0b01110111` |     `0x77`    |                `0x88`               |
+|     b |  0 0 1 1 1 1 1 0 |  `0b01111100` |     `0x7C`    |                `0x83`               |
+|     C |  1 0 0 1 1 1 0 0 |  `0b00111001` |     `0x39`    |                `0xC6`               |
+|     d |  0 1 1 1 1 0 1 0 |  `0b01011110` |     `0x5E`    |                `0xA1`               |
+|     E |  1 0 0 1 1 1 1 0 |  `0b01111001` |     `0x79`    |                `0x86`               |
+|     F |  1 0 0 0 1 1 1 0 |  `0b01110001` |     `0x71`    |                `0x8E`               |
+```
+
+## CHƯƠNG 03 ADC
+
+## CHƯƠNG 04 TIMER - PWM
+
+## CHƯƠNG 05 UART
+
+## CHƯƠNG 06 I2C
+
+## CHƯƠNG 07 SPI
+
+## CHƯƠNG 08 I2S
+
+## CHƯƠNG 09 WIFI
+
+## CHƯƠNG 10 BLUETOOTH
+
