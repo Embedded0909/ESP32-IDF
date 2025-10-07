@@ -153,7 +153,53 @@ gpio_config(&io_conf);      : Set config GPIO
 |     E |  1 0 0 1 1 1 1 0 |  `0b01111001` |     `0x79`    |                `0x86`               |
 |     F |  1 0 0 0 1 1 1 0 |  `0b01110001` |     `0x71`    |                `0x8E`               |
 ```
+```cpp
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/gpio.h"
 
+#define NUM_SEGMENTS 7
+int seg_pins[NUM_SEGMENTS] = {2, 4, 5, 18, 19, 21, 22};  // a,b,c,d,e,f,g
+
+//(cathode chung)
+const uint8_t seg_code[10] = {
+    0x3F, // 0
+    0x06, // 1
+    0x5B, // 2
+    0x4F, // 3
+    0x66, // 4
+    0x6D, // 5
+    0x7D, // 6
+    0x07, // 7
+    0x7F, // 8
+    0x6F  // 9
+};
+
+void display_digit(uint8_t num) {
+    // Đảo bit vì Anode chung sáng khi mức LOW
+    uint8_t code = ~seg_code[num];
+
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        int state = (code >> i) & 0x01;
+        gpio_set_level(seg_pins[i], state);
+    }
+}
+
+void app_main(void) {
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        gpio_reset_pin(seg_pins[i]);
+        gpio_set_direction(seg_pins[i], GPIO_MODE_OUTPUT);   // Hoặc dùng configGPIO như mình hướng dẫn trong video
+    }
+
+    while (1) {
+        for (int i = 0; i < 10; i++) {
+            display_digit(i);
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+    }
+}
+
+```
 ## CHƯƠNG 03 ADC
 ### 3.1 Lý thuyết
 ![alt text](image-5.png)
