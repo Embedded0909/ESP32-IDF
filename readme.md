@@ -200,6 +200,19 @@ void app_main(void) {
 }
 
 ```
+
+Cách config thư viện
+```
+idf_component_register(SRCS "led7.c"
+                      INCLUDE_DIRS ".")
+```
+Trong main make
+```
+idf_component_register(SRCS "BlinkLed.c"
+                    INCLUDE_DIRS "." 
+                    REQUIRES driver led)
+```
+
 ## CHƯƠNG 03 ADC
 ### 3.1 Lý thuyết
 ![alt text](image-5.png)
