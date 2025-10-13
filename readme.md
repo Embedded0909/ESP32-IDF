@@ -282,6 +282,77 @@ void app_main(void)
 }
 ```
 ## CHƯƠNG 04 TIMER - PWM
+Example
+```cpp
+#include <stdio.h>
+#include "driver/ledc.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#define LED_PIN         2             
+#define LEDC_TIMER      LEDC_TIMER_0
+#define LEDC_CHANNEL    LEDC_CHANNEL_0
+#define LEDC_MODE       LEDC_LOW_SPEED_MODE
+#define LEDC_DUTY_RES   LEDC_TIMER_8_BIT  
+#define LEDC_FREQUENCY  5000          
+
+void app_main(void)
+{
+  
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode       = LEDC_MODE,
+        .timer_num        = LEDC_TIMER,
+        .duty_resolution  = LEDC_DUTY_RES,
+        .freq_hz          = LEDC_FREQUENCY,
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
+
+    
+    ledc_channel_config_t ledc_channel = {
+        .speed_mode     = LEDC_MODE,
+        .channel        = LEDC_CHANNEL,
+        .timer_sel      = LEDC_TIMER,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .gpio_num       = LED_PIN,
+        .duty           = 0,
+        .hpoint         = 0
+    };
+    ledc_channel_config(&ledc_channel);
+
+
+    while (1)
+    {
+
+        for (int duty = 0; duty <= 255; duty++)
+        {
+            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
+            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+            vTaskDelay(pdMS_TO_TICKS(10));  
+        }
+
+        for (int duty = 255; duty >= 0; duty--)
+        {
+            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
+            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+    }
+}
+
+```
+
+Bản chất của các struct ledc_timer_config_t
+
+| Thành phần          | Kiểu dữ liệu       | Ví dụ                 | Ý nghĩa                                                                        |
+| ------------------- | ------------------ | --------------------- | ------------------------------------------------------------------------------ |
+| **speed_mode**      | `ledc_mode_t`      | `LEDC_LOW_SPEED_MODE` | Chọn **LOW_SPEED_MODE** hoặc **HIGH_SPEED_MODE**.                              |
+| **timer_num**       | `ledc_timer_t`     | `LEDC_TIMER_0`        | Chọn bộ timer nào (0 → 3)                                                      |
+| **duty_resolution** | `ledc_timer_bit_t` | `LEDC_TIMER_8_BIT`    | Độ phân giải PWM (1 → 16 bit)                                                  |
+| **freq_hz**         | `uint32_t`         | `5000`                | Tần số PWM (Hz)                                                                |
+| **clk_cfg**         | `ledc_clk_cfg_t`   | `LEDC_AUTO_CLK`       | Chọn nguồn clock: `LEDC_USE_APB_CLK`, `LEDC_USE_REF_TICK`, hoặc `LEDC_AUTO_CLK`|
+| **deconfigure**     | `uint32_t`         | (ít dùng)             | Xóa cấu hình timer cũ (nếu cần reset cấu hình)                                 |
+
 
 ## CHƯƠNG 05 UART
 
