@@ -353,6 +353,140 @@ Bản chất của các struct ledc_timer_config_t
 | **clk_cfg**         | `ledc_clk_cfg_t`   | `LEDC_AUTO_CLK`       | Chọn nguồn clock: `LEDC_USE_APB_CLK`, `LEDC_USE_REF_TICK`, hoặc `LEDC_AUTO_CLK`|
 | **deconfigure**     | `uint32_t`         | (ít dùng)             | Xóa cấu hình timer cũ (nếu cần reset cấu hình)                                 |
 
+```cpp
+#ifndef MOTOR_H
+#define MOTOR_H
+
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+
+typedef struct {
+    int ena_pin;
+    int in1_pin;
+    int in2_pin;
+    ledc_channel_t pwm_channel;
+    ledc_timer_t pwm_timer;
+} Motor_t;
+
+void motor_init(Motor_t *motor, int ena_pin, int in1_pin, int in2_pin,
+                ledc_channel_t channel, ledc_timer_t timer);
+
+void motor_forward(Motor_t *motor, uint32_t speed);
+void motor_backward(Motor_t *motor, uint32_t speed);
+void motor_stop(Motor_t *motor);
+
+#endif
+
+```
+
+```cpp
+#include "motor.h"
+
+void motor_init(Motor_t *motor, int ena_pin, int in1_pin, int in2_pin,
+                ledc_channel_t channel, ledc_timer_t timer)
+{
+    motor->ena_pin = ena_pin;
+    motor->in1_pin = in1_pin;
+    motor->in2_pin = in2_pin;
+    motor->pwm_channel = channel;
+    motor->pwm_timer = timer;
+
+    // Cấu hình chân điều khiển hướng
+    gpio_set_direction(in1_pin, GPIO_MODE_OUTPUT);
+    gpio_set_direction(in2_pin, GPIO_MODE_OUTPUT);
+
+    // Cấu hình PWM cho ENA
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_num = timer,
+        .duty_resolution = LEDC_TIMER_10_BIT,
+        .freq_hz = 1000,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
+
+    ledc_channel_config_t ledc_channel = {
+        .gpio_num = ena_pin,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = channel,
+        .timer_sel = timer,
+        .duty = 0,
+        .hpoint = 0
+    };
+    ledc_channel_config(&ledc_channel);
+}
+
+void motor_forward(Motor_t *motor, uint32_t speed)
+{
+    gpio_set_level(motor->in1_pin, 1);
+    gpio_set_level(motor->in2_pin, 0);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel, speed);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel);
+}
+
+void motor_backward(Motor_t *motor, uint32_t speed)
+{
+    gpio_set_level(motor->in1_pin, 0);
+    gpio_set_level(motor->in2_pin, 1);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel, speed);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel);
+}
+
+void motor_stop(Motor_t *motor)
+{
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel, 0);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, motor->pwm_channel);
+}
+
+```
+
+```cpp
+#include <stdio.h>
+#include "driver/ledc.h"
+#include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#define ENA_GPIO 18
+#define IN1_GPIO 4
+#define IN2_GPIO 5
+
+void app_main(void)
+{
+    // Cấu hình GPIO hướng
+    gpio_set_direction(IN1_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_direction(IN2_GPIO, GPIO_MODE_OUTPUT);
+
+    // Cấu hình PWM cho ENA
+    ledc_timer_config_t timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_num = LEDC_TIMER_0,
+        .duty_resolution = LEDC_TIMER_10_BIT, // 0–1023
+        .freq_hz = 1000,
+        .clk_cfg = LEDC_AUTO_CLK};
+    ledc_timer_config(&timer);
+
+    ledc_channel_config_t channel = {
+        .gpio_num = ENA_GPIO,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0,
+        .duty = 0,
+        .hpoint = 0};
+    ledc_channel_config(&channel);
+    // Quay thuận
+    gpio_set_level(IN1_GPIO, 1);
+    gpio_set_level(IN2_GPIO, 0);
+
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 500);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    while (1)
+    {
+    }
+}
+
+
+```
 
 ## CHƯƠNG 05 UART
 
