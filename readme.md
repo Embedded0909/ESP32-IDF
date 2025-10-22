@@ -1,14 +1,18 @@
 ## TÀI LIỆU THAM KHẢO
-----------------------------------------
-Reference: 
+
+---
+
+Reference:
 https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf
-Module: 
+Module:
 https://www.circuitstate.com/pinouts/doit-esp32-devkit-v1-wifi-development-board-pinout-diagram-and-reference/
 
-----------------------------------------
+---
 
 ## CHƯƠNG 00 HƯỚNG DẪN CÁCH HỌC
+
 Đối với mọi con vi điều khiển mà các bạn muốn học
+
 ```cpp
 - Đọc tài liệu nhà sản xuất (Biết thông tin cơ bản như SRAM, FLASH,..)
 - Đọc example về ngoại vi nếu có (Cái này thì ESP32 làm rất tốt)
@@ -17,6 +21,7 @@ https://www.circuitstate.com/pinouts/doit-esp32-devkit-v1-wifi-development-board
 ```
 
 ## CHƯƠNG 01 TẠO VÀ BUILD PROJECT
+
 Module kit v1
 ![alt text](image.png)
 Chức năng của các chân
@@ -26,6 +31,7 @@ Schematic
 ![alt text](image-1.png)
 
 Các lệnh khởi tạo project
+
 ```cpp
 - B1 vào shell/cmd idf
 - B2 cd tới ổ chứa project
@@ -33,7 +39,9 @@ Các lệnh khởi tạo project
 - B4 cd vào NAME
 - B5 idf.py set-target esp32
 ```
+
 Các lệnh build và nạp
+
 ```cpp
 - idf.py build               : build dự án
 - idf.py -p COMx flash       : Nạp vào chip
@@ -41,6 +49,7 @@ Các lệnh build và nạp
 ```
 
 Chương trình đầu tiên
+
 ```cpp
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -67,10 +76,13 @@ void app_main(void)
 ### 2.1 Lý Thuyết
 
 GPIO là General Purpose Input/Output
+
 ```
 Là các chân tín hiệu trên vi điều khiển (MCU) có thể lập trình để làm ngõ vào (input) hoặc ngõ ra (output)
 ```
+
 Cơ chế cơ bản của GPIO
+
 ```
 Input:
 Đọc tín hiệu từ bên ngoài (nút nhấn, sensor, tín hiệu logic).
@@ -89,18 +101,24 @@ Pull up và Pull down
 ![alt text](image-2.png)
 
 Open drain và Push pull
+
 ```
 Open drain: Có thể ở trạng thái: floating và 0
 Push pull: Có thể ở trạng thái: 1 và 0
 ```
 
 Cách config GPIO
+
 #### Cách 01 - Tiện với config từng chân
-Sử dụng 
+
+Sử dụng
+
 ```cpp
 gpio_set_direction(number, mode);
 ```
+
 #### Cách 02 - Có thể config nhiều chân cùng lúc
+
 ```cpp
     gpio_config_t io_conf = {
         .intr_type = GPIO_INTR_DISABLE,         // Disable interrupt
@@ -111,7 +129,9 @@ gpio_set_direction(number, mode);
     };
     gpio_config(&io_conf);
 ```
+
 Trong đó
+
 ```cpp
 typedef struct {
     uint64_t pin_bit_mask;          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
@@ -121,18 +141,25 @@ typedef struct {
     gpio_int_type_t intr_type;      /*!< GPIO interrupt type                                  */
 } gpio_config_t;
 ```
+
 ### 2.2 Các function cần chú ý
+
 ```cpp
 gpio_get_level(num);        : Get ra mức của GPIO
 gpio_set_level(num, state)  : Set trạng thái của GPIO
 gpio_config(&io_conf);      : Set config GPIO
 ```
+
 ### 2.3 Thực hành với led 7 đoạn và IR Sensor
+
 #### 2.3.1 IR Sensor
+
 ![alt text](image-3.png)
 
 #### 2.3.2 Led 7 đoạn
+
 ![alt text](image-4.png)
+
 ```cpp
 | Ký tự | a b c d e f g dp | Logical (bin) | Logical (hex) | Common-anode port                   |
 | ----: | :--------------: | :-----------: | :-----------: | :---------------------------------: |
@@ -153,6 +180,7 @@ gpio_config(&io_conf);      : Set config GPIO
 |     E |  1 0 0 1 1 1 1 0 |  `0b01111001` |     `0x79`    |                `0x86`               |
 |     F |  1 0 0 0 1 1 1 0 |  `0b01110001` |     `0x71`    |                `0x8E`               |
 ```
+
 ```cpp
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -202,32 +230,43 @@ void app_main(void) {
 ```
 
 Cách config thư viện
+
 ```
 idf_component_register(SRCS "led7.c"
                       INCLUDE_DIRS ".")
 ```
+
 Trong main make
+
 ```
 idf_component_register(SRCS "BlinkLed.c"
-                    INCLUDE_DIRS "." 
+                    INCLUDE_DIRS "."
                     REQUIRES driver led)
 ```
 
 ## CHƯƠNG 03 ADC
+
 ### 3.1 Lý thuyết
+
 ![alt text](image-5.png)
 Gồm 2 bộ ADC độc lập (ADC1 và ADC2)
+
 ```
 ADC1: 8 chanels
 ADC2: 10 chanels
 ```
+
 Độ phân giải ADC
+
 ```
 Tối đa 12-bit (0–4095)
 ```
+
 ### 3.2 Thực chiến ADC
+
 Sử dụng ADC1 CHANEL 0
 Các bước làm
+
 ```cpp
     BƯỚC 1: Tạo handle cho ADC1 (Init)
     --------------------------------------------------------
@@ -244,13 +283,15 @@ Các bước làm
         .atten = ADC_ATTEN_DB_12,           // 12db cho phép đọc tới ~3.3V
     };
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
-    
+
     BƯỚC 3: Đọc ADC (Hiệu chuẩn bằng Calibration nếu cần)
     ---------------------------------------------------------
     adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &value);
     printf("ADC1_CH0 (GPIO36) value: %d\n", value);
 ```
+
 Example
+
 ```cpp
 #include <stdio.h>
 #include "esp_adc/adc_oneshot.h"
@@ -267,8 +308,8 @@ void app_main(void)
     adc_oneshot_new_unit(&init_config, &adc1_handle);
 
     adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_DEFAULT, 
-        .atten = ADC_ATTEN_DB_12,         
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+        .atten = ADC_ATTEN_DB_12,
     };
     adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config);
 
@@ -281,24 +322,27 @@ void app_main(void)
     }
 }
 ```
+
 ## CHƯƠNG 04 TIMER - PWM
+
 Example
+
 ```cpp
 #include <stdio.h>
 #include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define LED_PIN         2             
+#define LED_PIN         2
 #define LEDC_TIMER      LEDC_TIMER_0
 #define LEDC_CHANNEL    LEDC_CHANNEL_0
 #define LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define LEDC_DUTY_RES   LEDC_TIMER_8_BIT  
-#define LEDC_FREQUENCY  5000          
+#define LEDC_DUTY_RES   LEDC_TIMER_8_BIT
+#define LEDC_FREQUENCY  5000
 
 void app_main(void)
 {
-  
+
     ledc_timer_config_t ledc_timer = {
         .speed_mode       = LEDC_MODE,
         .timer_num        = LEDC_TIMER,
@@ -308,7 +352,7 @@ void app_main(void)
     };
     ledc_timer_config(&ledc_timer);
 
-    
+
     ledc_channel_config_t ledc_channel = {
         .speed_mode     = LEDC_MODE,
         .channel        = LEDC_CHANNEL,
@@ -328,7 +372,7 @@ void app_main(void)
         {
             ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
             ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-            vTaskDelay(pdMS_TO_TICKS(10));  
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
 
         for (int duty = 255; duty >= 0; duty--)
@@ -344,14 +388,14 @@ void app_main(void)
 
 Bản chất của các struct ledc_timer_config_t
 
-| Thành phần          | Kiểu dữ liệu       | Ví dụ                 | Ý nghĩa                                                                        |
-| ------------------- | ------------------ | --------------------- | ------------------------------------------------------------------------------ |
-| **speed_mode**      | `ledc_mode_t`      | `LEDC_LOW_SPEED_MODE` | Chọn **LOW_SPEED_MODE** hoặc **HIGH_SPEED_MODE**.                              |
-| **timer_num**       | `ledc_timer_t`     | `LEDC_TIMER_0`        | Chọn bộ timer nào (0 → 3)                                                      |
-| **duty_resolution** | `ledc_timer_bit_t` | `LEDC_TIMER_8_BIT`    | Độ phân giải PWM (1 → 16 bit)                                                  |
-| **freq_hz**         | `uint32_t`         | `5000`                | Tần số PWM (Hz)                                                                |
-| **clk_cfg**         | `ledc_clk_cfg_t`   | `LEDC_AUTO_CLK`       | Chọn nguồn clock: `LEDC_USE_APB_CLK`, `LEDC_USE_REF_TICK`, hoặc `LEDC_AUTO_CLK`|
-| **deconfigure**     | `uint32_t`         | (ít dùng)             | Xóa cấu hình timer cũ (nếu cần reset cấu hình)                                 |
+| Thành phần          | Kiểu dữ liệu       | Ví dụ                 | Ý nghĩa                                                                         |
+| ------------------- | ------------------ | --------------------- | ------------------------------------------------------------------------------- |
+| **speed_mode**      | `ledc_mode_t`      | `LEDC_LOW_SPEED_MODE` | Chọn **LOW_SPEED_MODE** hoặc **HIGH_SPEED_MODE**.                               |
+| **timer_num**       | `ledc_timer_t`     | `LEDC_TIMER_0`        | Chọn bộ timer nào (0 → 3)                                                       |
+| **duty_resolution** | `ledc_timer_bit_t` | `LEDC_TIMER_8_BIT`    | Độ phân giải PWM (1 → 16 bit)                                                   |
+| **freq_hz**         | `uint32_t`         | `5000`                | Tần số PWM (Hz)                                                                 |
+| **clk_cfg**         | `ledc_clk_cfg_t`   | `LEDC_AUTO_CLK`       | Chọn nguồn clock: `LEDC_USE_APB_CLK`, `LEDC_USE_REF_TICK`, hoặc `LEDC_AUTO_CLK` |
+| **deconfigure**     | `uint32_t`         | (ít dùng)             | Xóa cấu hình timer cũ (nếu cần reset cấu hình)                                  |
 
 ```cpp
 #ifndef MOTOR_H
@@ -453,11 +497,11 @@ void motor_stop(Motor_t *motor)
 
 void app_main(void)
 {
-    // Cấu hình GPIO hướng
+
     gpio_set_direction(IN1_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_direction(IN2_GPIO, GPIO_MODE_OUTPUT);
 
-    // Cấu hình PWM cho ENA
+
     ledc_timer_config_t timer = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .timer_num = LEDC_TIMER_0,
@@ -490,6 +534,125 @@ void app_main(void)
 
 ## CHƯƠNG 05 UART
 
+```cpp
+#include <stdio.h>
+#include "driver/uart.h"
+#include "driver/gpio.h"
+#include "string.h"
+#include "stdlib.h"
+
+typedef struct
+{
+    uint8_t tem;
+    uint8_t hum;
+} DHT_Typedef;
+
+typedef struct
+{
+    uint8_t min;
+    uint8_t second;
+} RTC_Typedef;
+
+typedef struct
+{
+    DHT_Typedef mDHT;
+    RTC_Typedef mRTC;
+} Data_Typedef;
+
+Data_Typedef mData = {
+    .mDHT = {25, 60},
+    .mRTC = {30, 45},
+};
+
+#define UART_PORT UART_NUM_2
+#define TXD_PIN (GPIO_NUM_17)
+#define RXD_PIN (GPIO_NUM_16)
+#define BUF_SIZE 1024
+
+void uart_send_str(const char *str)
+{
+    uart_write_bytes(UART_PORT, str, strlen(str));
+}
+
+void handle_command(char *str)
+{
+    uint8_t cmd[10];
+    uint8_t idx = 0;
+    char *token = strtok(str, " ");
+
+    while (token != NULL && idx < 10)
+    {
+        cmd[idx++] = (uint8_t)strtol(token, NULL, 16);
+        token = strtok(NULL, " ");
+    }
+
+    if (idx < 3)
+    {
+        uart_send_str("ERR: Invalid CMD\r\n");
+        return;
+    }
+
+    uint8_t header = cmd[0];
+    uint8_t group = cmd[1];
+    uint8_t subcmd = cmd[2];
+
+    char response[64];
+
+    if (header == 0x1A && group == 0x80)
+    {
+        switch (subcmd)
+        {
+        case 0x11:
+            sprintf(response, "Temp: %d\r\n", mData.mDHT.tem);
+            uart_send_str(response);
+            break;
+
+        case 0x12:
+            sprintf(response, "Hum: %d\r\n", mData.mDHT.hum);
+            uart_send_str(response);
+            break;
+
+        default:
+            //sprintf(response, "ERR: Unknown subcmd 0x%02X\r\n", subcmd);
+            //uart_send_str(response);
+            break;
+        }
+    }
+    else
+    {
+        uart_send_str("ERR: Invalid\r\n");
+    }
+}
+
+void app_main(void)
+{
+    const uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE};
+
+    uart_param_config(UART_PORT, &uart_config);
+    uart_set_pin(UART_PORT, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_driver_install(UART_PORT, BUF_SIZE * 2, 0, 0, NULL, 0);
+
+    uint8_t data[BUF_SIZE];
+
+    while (1)
+    {
+        int len = uart_read_bytes(UART_PORT, data, BUF_SIZE - 1, pdMS_TO_TICKS(100));
+        if (len > 0)
+        {
+            data[len] = '\0';               // Kết thúc chuỗi
+            printf("Received: %s\n", data); // debug ra console
+            handle_command((char *)data);
+        }
+    }
+}
+
+```
+
 ## CHƯƠNG 06 I2C
 
 ## CHƯƠNG 07 SPI
@@ -499,4 +662,3 @@ void app_main(void)
 ## CHƯƠNG 09 WIFI
 
 ## CHƯƠNG 10 BLUETOOTH
-
