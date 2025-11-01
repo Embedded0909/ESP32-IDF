@@ -654,7 +654,118 @@ void app_main(void)
 ```
 
 ## CHƯƠNG 06 I2C
+```cpp
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/i2c.h"
+#include "esp_log.h"
 
+#define I2C_MASTER_SDA_IO 21
+#define I2C_MASTER_SCL_IO 22
+#define I2C_MASTER_NUM I2C_NUM_0
+#define I2C_MASTER_FREQ_HZ 100000
+#define LCD_ADDR 0x27
+
+#define LCD_BACKLIGHT 0x08
+#define LCD_EN 0x04
+#define LCD_RS 0x01
+
+static const char *TAG = "LCD_I2C";
+
+static void lcd_send(uint8_t data)
+{
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (LCD_ADDR << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, data, true);
+    i2c_master_stop(cmd);
+    i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, pdMS_TO_TICKS(50));
+    i2c_cmd_link_delete(cmd);
+}
+
+static void lcd_send_cmd(uint8_t cmd)
+{
+    uint8_t high = cmd & 0xF0;
+    uint8_t low = (cmd << 4) & 0xF0;
+
+    lcd_send(high | LCD_BACKLIGHT | LCD_EN);
+    lcd_send(high | LCD_BACKLIGHT);
+    lcd_send(low | LCD_BACKLIGHT | LCD_EN);
+    lcd_send(low | LCD_BACKLIGHT);
+
+    vTaskDelay(pdMS_TO_TICKS(2));
+}
+
+static void lcd_send_data(uint8_t data)
+{
+    uint8_t high = data & 0xF0;
+    uint8_t low = (data << 4) & 0xF0;
+
+    lcd_send(high | LCD_BACKLIGHT | LCD_EN | LCD_RS);
+    lcd_send(high | LCD_BACKLIGHT | LCD_RS);
+    lcd_send(low | LCD_BACKLIGHT | LCD_EN | LCD_RS);
+    lcd_send(low | LCD_BACKLIGHT | LCD_RS);
+
+    vTaskDelay(pdMS_TO_TICKS(2));
+}
+
+static void lcd_send_string(const char *str)
+{
+    while (*str)
+        lcd_send_data(*str++);
+}
+
+static void lcd_set_cursor(uint8_t row, uint8_t col)
+{
+    uint8_t addr = (row == 0) ? (0x80 + col) : (0xC0 + col);
+    lcd_send_cmd(addr);
+}
+
+static void lcd_init(void)
+{
+    vTaskDelay(pdMS_TO_TICKS(50));
+    lcd_send_cmd(0x30);
+    vTaskDelay(pdMS_TO_TICKS(5));
+    lcd_send_cmd(0x20);
+    vTaskDelay(pdMS_TO_TICKS(5));
+
+    lcd_send_cmd(0x28); // 4-bit mode, 2 lines, 5x7 dots
+    lcd_send_cmd(0x08); // Display off
+    lcd_send_cmd(0x01); // Clear display
+    vTaskDelay(pdMS_TO_TICKS(5));
+    lcd_send_cmd(0x06); // Entry mode
+    lcd_send_cmd(0x0C); // Display on, cursor off
+}
+
+static void i2c_master_init(void)
+{
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+    };
+    ESP_ERROR_CHECK(i2c_param_config(I2C_MASTER_NUM, &conf));
+    ESP_ERROR_CHECK(i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0));
+    ESP_LOGI(TAG, "I2C initialized");
+}
+
+void app_main(void)
+{
+    i2c_master_init();
+    lcd_init();
+    lcd_set_cursor(0, 0);
+    lcd_send_string("Hello");
+    lcd_set_cursor(1, 0);
+    lcd_send_string("World");
+    ESP_LOGI(TAG, "Display done");
+}
+
+```
 ## CHƯƠNG 07 SPI
 
 ## CHƯƠNG 08 I2S
